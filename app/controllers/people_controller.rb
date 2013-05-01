@@ -75,7 +75,7 @@ class PeopleController < ApplicationController
   # (see js in views/people/index.html.erb for more details.)
   def search
     # call the function that actually finds all releveant search results from database
-    @people = search_db_fields
+    @people = User.search_db_fields(params)
     #
     priority_results = prioritize_search_results
 
@@ -506,59 +506,6 @@ class PeopleController < ApplicationController
 
   private
 
-  # Private function that does the heavy lifting for all search
-  #
-  # search params:
-  #     user_type
-  #         F => Faculty
-  #         S => Students
-  #         T => Staff
-  #         P => Part Time students
-  #         L => Full Time students
-  #         (can be clubbed e.g. SL for Full time students)
-  #     filterBoxOne
-  #         keywords typed in the search box
-  #     graduation_year
-  #     masters_program
-  #     is_active
-  def search_db_fields
-    people = User.scoped
-
-    # check user_type
-    if !params[:user_type].blank?
-        where_clause_string = ""
-        if params[:user_type].include? "F" or params[:user_type].include? "S"  or params[:user_type].include? "T"
-        # if (params[:user_type] =~ /[FST]/) == 0
-            where_clause_string << "("
-            where_clause_string << " is_faculty = 't' OR " if params[:user_type].include?("F")
-            where_clause_string << " is_student = 't' OR " if params[:user_type].include?("S")
-            where_clause_string << " is_staff = 't' OR " if params[:user_type].include?("T")
-            # remove last OR
-            where_clause_string= where_clause_string[0..-4]
-            where_clause_string << ")"
-        end
-        people = people.where(where_clause_string) unless where_clause_string.blank?
-        # user_type - P => Part Time students
-        people = people.where("is_part_time = 't'") if params[:user_type].include?("P")
-        # user_type - L => Full Time students
-        people = people.where("is_part_time = 'f'") if params[:user_type].include?("L")
-    end
-
-    # search more db fields (checks all entered keywords with db fields)
-    if !params[:filterBoxOne].blank?
-      params[:filterBoxOne].split.each do |query|
-        query = "%#{query}%"
-        people = people.where( "first_name ILIKE ? OR last_name ILIKE ? OR human_name ILIKE ? OR biography ILIKE ? OR email ILIKE ? OR title ILIKE ? OR webiso_account ILIKE ? OR organization_name ILIKE ? OR personal_email ILIKE ? OR work_city ILIKE ? OR work_state ILIKE ? OR work_country ILIKE ?",query, query, query, query, query,query,query, query, query, query, query,query)
-      end
-    end
-
-    # advanced search filter parameters
-    people = people.where("graduation_year = ?","#{params[:graduation_year]}") unless params[:graduation_year].blank?
-    people = people.where("masters_program = ?","#{params[:masters_program]}") unless params[:masters_program].blank?
-    people = people.where("is_active = 't'") unless params[:search_inactive] == 't'
-    people = people.joins(:registrations).where("registrations.course_id=?","#{params[:course_id]}") unless params[:course_id].blank?
-    people = people.order("first_name ASC, last_name ASC")
-  end
 
   # helper function that prioritizes the search results (if name was entered as part of search result, that is shown first vs it being found in bio/profile etc)
   def prioritize_search_results
@@ -590,7 +537,7 @@ class PeopleController < ApplicationController
   def get_search_or_key_contacts(search_params)
     if !search_params[:filterBoxOne].blank? || !search_params[:advanced_search_toggled].blank?
         # a specific search was issued, so return the exact search results for exporting contact details
-        search_db_fields
+        User.search_db_fields(params)
     else
         # no specific search issues, return key_contact results
         @defaults = get_default_key_contacts
