@@ -492,40 +492,14 @@ class PeopleController < ApplicationController
         @people = []
         @people << User.find_by_id(params[:search_id])
     end
-    vcard_str=""
+    @vcard_str=""
     @people.each do |user|
       card = Vpim::Vcard::Maker.make2 do |maker|
-        maker.add_name do |name|
-          name.prefix = ''
-          name.given = user.first_name
-          name.family = user.last_name
-        end
-        phones_hash = user.telephones_hash
-        if(!user.email.blank?)
-          maker.add_email(user.email) { |e| e.location = user.is_staff? ? 'work' : 'other' }
-        end
-        if(!user.personal_email.blank?)
-          maker.add_email(user.personal_email) { |e| e.location = 'home' }
-        end
-        maker.title = user.title unless user.title.nil?
-        maker.org = user.organization_name unless user.organization_name.nil?
-
-        phones_hash.each do |k,v|
-        # ignore empty telephone fields
-          if(!v.blank?)
-            maker.add_tel(v) do |tel|
-              tel.location = "work" if k == "Work"
-              tel.location = "home" if k == "Home"
-              tel.location = "fax" if k == "Fax"
-              tel.location = "cell" if k == "Mobile"
-              tel.location = "voice" if k == "Google Voice"
-            end
-          end
-        end
+        maker = user.fill_vcard_object(maker)
       end
-      vcard_str << card.to_s
+      @vcard_str << card.to_s
     end
-    send_data vcard_str,
+    send_data @vcard_str,
               :type=>"text/vcf; charset=utf-8",
               :disposition =>"attachment; filename=contact.vcf"
   end

@@ -18,6 +18,18 @@ describe PeopleController do
     #     assigns(:people).should == [@student_sam]
     #   end
     # end
+    describe "GET people#download_vcf" do
+      before(:each) do
+        @faculty_frank = FactoryGirl.create(:faculty_frank_user)
+        @student_sally = FactoryGirl.create(:student_sally_user, :is_part_time=>'t', :graduation_year=>'2012', :is_active=>'t', :title => 'Ms', :organization_name => 'CMUSV')
+      end
+
+      it "and download all contacts as vcf" do
+        get :download_vcf , :filterBoxOne => "sally"
+        assigns(:people).should include @student_sally
+        assigns(:vcard_str).should include @student_sally.first_name
+      end
+    end
 
     describe "GET people#search" do
         before(:each) do

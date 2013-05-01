@@ -397,6 +397,38 @@ class User < ActiveRecord::Base
     end
   end
 
+  def fill_vcard_object(maker)
+    maker.add_name do |name|
+      name.prefix = ''
+      name.given = self.first_name
+      name.family = self.last_name
+    end
+    phones_hash = self.telephones_hash
+    if(!self.email.blank?)
+      maker.add_email(self.email) { |e| e.location = self.is_staff? ? 'work' : 'other' }
+    end
+    if(!self.personal_email.blank?)
+      maker.add_email(self.personal_email) { |e| e.location = 'home' }
+    end
+    maker.title = self.title if self.title?
+    maker.org = self.organization_name if self.organization_name?
+
+    phones_hash.each do |k,v|
+      # ignore empty telephone fields
+      if(!v.blank?)
+        maker.add_tel(v) do |tel|
+          tel.location = "work" if k == "Work"
+          tel.location = "home" if k == "Home"
+          tel.location = "fax" if k == "Fax"
+          tel.location = "cell" if k == "Mobile"
+          tel.location = "voice" if k == "Google Voice"
+        end
+      end
+    end
+
+    return maker
+  end
+
   protected
   def person_before_save
     # We populate some reasonable defaults, but this can be overridden in the database
