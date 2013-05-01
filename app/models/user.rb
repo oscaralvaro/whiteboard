@@ -483,6 +483,18 @@ class User < ActiveRecord::Base
     people = people.order("first_name ASC, last_name ASC")
   end
 
+  # helper function that prioritizes the search results (if name was entered as part of search result, that is shown first vs it being found in bio/profile etc)
+  def self.prioritize_search_results(params)
+    priority_results = User.scoped
+    if !params[:filterBoxOne].blank?
+      params[:filterBoxOne].split.each do |query|
+        query = '%'+query+'%'
+        priority_results = priority_results.where( "first_name ILIKE ? OR last_name ILIKE ? OR human_name ILIKE ? OR organization_name ILIKE ?",query, query, query, query)
+      end
+    end
+    priority_results = priority_results.collect{ |result| result.id }
+  end
+
   protected
   def person_before_save
     # We populate some reasonable defaults, but this can be overridden in the database
